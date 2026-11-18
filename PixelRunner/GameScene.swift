@@ -62,12 +62,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             star.fillColor = .white
             star.strokeColor = .clear
             star.alpha = CGFloat.random(in: 0.3...0.9)
-
             star.position = CGPoint(
                 x: CGFloat.random(in: 0...size.width),
                 y: CGFloat.random(in: size.height * 0.35...size.height)
             )
-
             stars.addChild(star)
         }
 
@@ -165,10 +163,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         player.strokeColor = .white
         player.lineWidth = 1.5
         player.glowWidth = 5
-        player.position = CGPoint(
-            x: playerX,
-            y: groundY + 22
-        )
+        player.position = CGPoint(x: playerX, y: groundY + 22)
         player.zPosition = 5
 
         let eye = SKShapeNode(circleOfRadius: 3)
@@ -194,10 +189,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.fontSize = 25
         scoreLabel.fontColor = .white
         scoreLabel.horizontalAlignmentMode = .right
-        scoreLabel.position = CGPoint(
-            x: size.width - 30,
-            y: size.height - 48
-        )
+        scoreLabel.position = CGPoint(x: size.width - 30, y: size.height - 48)
         scoreLabel.zPosition = 20
         addChild(scoreLabel)
 
@@ -302,18 +294,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             cornerRadius: 5
         )
 
+        obstacle.name = "obstacle"
         obstacle.fillColor = SKColor(red: 1, green: 0.25, blue: 0.32, alpha: 1)
         obstacle.strokeColor = SKColor(red: 1, green: 0.65, blue: 0.55, alpha: 1)
         obstacle.lineWidth = 2
         obstacle.glowWidth = 3
 
-        obstacle.position = CGPoint(
-            x: size.width + 50,
-            y: groundY + height / 2
-        )
+        obstacle.position = CGPoint(x: size.width + 50, y: groundY + height / 2)
         obstacle.zPosition = 4
 
-        let body = SKPhysicsBody(rectangleOf: CGSize(width: width - 3, height: height - 3))
+        let body = SKPhysicsBody(
+            rectangleOf: CGSize(width: width - 3, height: height - 3)
+        )
         body.isDynamic = false
         body.categoryBitMask = obstacleCategory
         body.contactTestBitMask = playerCategory
@@ -336,6 +328,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         guard gameState == .playing else { return }
 
         let coin = SKShapeNode(circleOfRadius: 12)
+        coin.name = "coin"
         coin.fillColor = SKColor(red: 1, green: 0.78, blue: 0.12, alpha: 1)
         coin.strokeColor = SKColor(red: 1, green: 0.95, blue: 0.55, alpha: 1)
         coin.lineWidth = 2
@@ -356,8 +349,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         addChild(coin)
 
-        let spin = SKAction.rotate(byAngle: .pi * 2, duration: 1)
-        coin.run(.repeatForever(spin))
+        coin.run(.repeatForever(.rotate(byAngle: .pi * 2, duration: 1)))
 
         coin.run(
             SKAction.sequence([
@@ -371,8 +363,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         guard gameState == .playing else { return }
         guard let body = player.physicsBody else { return }
 
-        if player.position.y <= groundY + 25,
-           body.velocity.dy <= 5 {
+        if player.position.y <= groundY + 25 && body.velocity.dy <= 5 {
             body.velocity = CGVector(dx: 0, dy: 0)
             body.applyImpulse(CGVector(dx: 0, dy: 520))
 
@@ -453,8 +444,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         player.run(
             .sequence([
-                .rotate(byAngle: -.15, duration: 0.1),
-                .rotate(byAngle: .15, duration: 0.1)
+                .rotate(byAngle: -0.15, duration: 0.1),
+                .rotate(byAngle: 0.15, duration: 0.1)
             ])
         )
     }
@@ -465,7 +456,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
+        guard !touches.isEmpty else { return }
 
         switch gameState {
         case .ready:
@@ -480,14 +471,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func restartGame() {
         removeAllActions()
 
-        enumerateChildNodes(withName: "//obstacle") { node, _ in
-            node.removeFromParent()
-        }
-
-        for node in children where
-            node.physicsBody?.categoryBitMask == obstacleCategory ||
-            node.physicsBody?.categoryBitMask == coinCategory {
-            node.removeFromParent()
+        for node in children {
+            if node.name == "obstacle" || node.name == "coin" {
+                node.removeFromParent()
+            }
         }
 
         player.removeAllActions()
