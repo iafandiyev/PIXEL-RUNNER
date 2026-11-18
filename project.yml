@@ -1,4 +1,3 @@
-
 name: PixelRunner
 
 options:
@@ -22,7 +21,6 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: "PIXEL RUNNER"
         CODE_SIGNING_ALLOWED: NO
 
     info:
@@ -33,3 +31,4 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UIRequiresFullScreen: true
+        UIViewControllerBasedStatusBarAppearance: false

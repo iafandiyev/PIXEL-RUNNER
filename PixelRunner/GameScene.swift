@@ -1,9 +1,10 @@
 
 import SpriteKit
+import UIKit
 
 final class GameScene: SKScene, SKPhysicsContactDelegate {
 
-    private enum GameState {
+    private enum State {
         case ready
         case playing
         case gameOver
@@ -14,448 +15,514 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let obstacleCategory: UInt32 = 4
     private let coinCategory: UInt32 = 8
 
-    private var player = SKShapeNode()
-    private var scoreLabel = SKLabelNode()
-    private var bestLabel = SKLabelNode()
-    private var messageLabel = SKLabelNode()
+    private var gameState: State = .ready
 
-    private var state: GameState = .ready
+    private var player = SKShapeNode()
+    private var ground = SKShapeNode()
+
+    private var scoreLabel = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+    private var bestLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+
+    private var titleLabel = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+    private var messageLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
+    private var actionLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+
     private var score = 0
     private var bestScore = UserDefaults.standard.integer(forKey: "pixelRunnerBest")
 
-    private var spawnTimer: TimeInterval = 0
-    private var scoreTimer: TimeInterval = 0
-    private var lastUpdate: TimeInterval = 0
-    private var gameSpeed: CGFloat = 300
-
-    private var floorY: CGFloat {
-        size.height * 0.19
-    }
+    private var groundY: CGFloat = 75
+    private var playerX: CGFloat = 180
+    private var elapsedTime: TimeInterval = 0
+    private var lastUpdateTime: TimeInterval = 0
 
     override func didMove(to view: SKView) {
-        physicsWorld.gravity = CGVector(dx: 0, dy: -22)
+        backgroundColor = SKColor(red: 0.035, green: 0.055, blue: 0.12, alpha: 1)
+
+        physicsWorld.gravity = CGVector(dx: 0, dy: -18)
         physicsWorld.contactDelegate = self
-        setupWorld()
+
+        view.ignoresSiblingOrder = true
+        view.isMultipleTouchEnabled = false
+
+        setupBackground()
+        setupGround()
+        setupPlayer()
+        setupHUD()
+        setupOverlay()
+
+        showReadyScreen()
     }
 
-    private func setupWorld() {
-        removeAllChildren()
-        removeAllActions()
+    private func setupBackground() {
+        let stars = SKNode()
+        stars.zPosition = -10
 
-        backgroundColor = SKColor(
-            red: 0.055,
-            green: 0.075,
-            blue: 0.14,
-            alpha: 1
-        )
-
-        state = .ready
-        score = 0
-        spawnTimer = 0
-        scoreTimer = 0
-        gameSpeed = 300
-        lastUpdate = 0
-
-        createBackground()
-        createGround()
-        createPlayer()
-        createHUD()
-        updateLabels()
-        showMessage("PIXEL RUNNER", subtitle: "TAP TO START")
-    }
-
-    private func createBackground() {
-        for _ in 0..<45 {
-            let star = SKShapeNode(
-                circleOfRadius: CGFloat.random(in: 1...2)
-            )
-
+        for _ in 0..<75 {
+            let star = SKShapeNode(circleOfRadius: CGFloat.random(in: 0.7...2.0))
             star.fillColor = .white
             star.strokeColor = .clear
-            star.alpha = CGFloat.random(in: 0.2...0.8)
+            star.alpha = CGFloat.random(in: 0.3...0.9)
 
             star.position = CGPoint(
                 x: CGFloat.random(in: 0...size.width),
-                y: CGFloat.random(
-                    in: floorY + 100...max(floorY + 101, size.height)
-                )
+                y: CGFloat.random(in: size.height * 0.35...size.height)
             )
 
-            star.zPosition = 0
-            addChild(star)
+            stars.addChild(star)
         }
 
-        let moon = SKShapeNode(circleOfRadius: 27)
-        moon.fillColor = SKColor(
-            red: 1, green: 0.82, blue: 0.43, alpha: 1
-        )
+        addChild(stars)
+
+        let moon = SKShapeNode(circleOfRadius: 35)
+        moon.fillColor = SKColor(red: 1, green: 0.88, blue: 0.55, alpha: 1)
         moon.strokeColor = .clear
-        moon.position = CGPoint(
-            x: size.width * 0.82,
-            y: size.height * 0.76
-        )
-        moon.zPosition = 1
+        moon.glowWidth = 12
+        moon.position = CGPoint(x: size.width * 0.78, y: size.height * 0.78)
+        moon.zPosition = -8
         addChild(moon)
 
-        for index in 0..<5 {
-            let mountain = SKShapeNode()
-            let path = CGMutablePath()
-            let x = CGFloat(index) * size.width / 3
+        createMountain(
+            height: size.height * 0.32,
+            color: SKColor(red: 0.10, green: 0.13, blue: 0.27, alpha: 1),
+            offset: 0
+        )
 
-            path.move(to: CGPoint(x: x - 100, y: floorY + 12))
-            path.addLine(to: CGPoint(x: x + 100, y: floorY + 130))
-            path.addLine(to: CGPoint(x: x + 300, y: floorY + 12))
-            path.closeSubpath()
-
-            mountain.path = path
-            mountain.fillColor = SKColor(
-                red: 0.12, green: 0.17, blue: 0.28, alpha: 1
-            )
-            mountain.strokeColor = .clear
-            mountain.zPosition = 1
-            addChild(mountain)
-        }
+        createMountain(
+            height: size.height * 0.22,
+            color: SKColor(red: 0.07, green: 0.10, blue: 0.20, alpha: 1),
+            offset: 120
+        )
     }
 
-    private func createGround() {
-        let ground = SKShapeNode(
-            rectOf: CGSize(width: size.width * 2, height: 24)
-        )
+    private func createMountain(height: CGFloat, color: SKColor, offset: CGFloat) {
+        let path = CGMutablePath()
+        let base: CGFloat = 45
 
-        ground.fillColor = SKColor(
-            red: 0.15, green: 0.72, blue: 0.48, alpha: 1
-        )
+        path.move(to: CGPoint(x: 0, y: base))
+        path.addLine(to: CGPoint(x: size.width * 0.15, y: height))
+        path.addLine(to: CGPoint(x: size.width * 0.32, y: base + offset * 0.1))
+        path.addLine(to: CGPoint(x: size.width * 0.53, y: height * 0.85))
+        path.addLine(to: CGPoint(x: size.width * 0.73, y: base))
+        path.addLine(to: CGPoint(x: size.width, y: height * 0.9))
+        path.addLine(to: CGPoint(x: size.width, y: 0))
+        path.addLine(to: CGPoint(x: 0, y: 0))
+        path.closeSubpath()
+
+        let mountain = SKShapeNode(path: path)
+        mountain.fillColor = color
+        mountain.strokeColor = .clear
+        mountain.zPosition = -5
+        addChild(mountain)
+    }
+
+    private func setupGround() {
+        groundY = size.height * 0.19
+
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: groundY))
+        path.addLine(to: CGPoint(x: size.width, y: groundY))
+        path.addLine(to: CGPoint(x: size.width, y: 0))
+        path.addLine(to: CGPoint(x: 0, y: 0))
+        path.closeSubpath()
+
+        ground = SKShapeNode(path: path)
+        ground.fillColor = SKColor(red: 0.08, green: 0.13, blue: 0.17, alpha: 1)
         ground.strokeColor = .clear
-        ground.position = CGPoint(
-            x: size.width / 2,
-            y: floorY
-        )
-        ground.zPosition = 4
-
-        ground.physicsBody = SKPhysicsBody(
-            rectangleOf: CGSize(width: size.width * 2, height: 24)
-        )
-        ground.physicsBody?.isDynamic = false
-        ground.physicsBody?.categoryBitMask = groundCategory
-        ground.physicsBody?.collisionBitMask = playerCategory
-
+        ground.zPosition = 1
         addChild(ground)
 
-        let line = SKShapeNode(
-            rectOf: CGSize(width: size.width * 2, height: 4)
+        let line = SKShapeNode(rectOf: CGSize(width: size.width, height: 5))
+        line.fillColor = SKColor(red: 0.15, green: 1, blue: 0.55, alpha: 1)
+        line.strokeColor = .clear
+        line.position = CGPoint(x: size.width / 2, y: groundY)
+        line.glowWidth = 5
+        line.zPosition = 2
+        addChild(line)
+
+        let groundBody = SKPhysicsBody(
+            edgeFrom: CGPoint(x: 0, y: groundY),
+            to: CGPoint(x: size.width, y: groundY)
         )
 
-        line.fillColor = SKColor(
-            red: 0.35, green: 1, blue: 0.65, alpha: 1
-        )
-        line.strokeColor = .clear
-        line.position = CGPoint(
-            x: size.width / 2,
-            y: floorY + 14
-        )
-        line.zPosition = 5
-        addChild(line)
+        groundBody.categoryBitMask = groundCategory
+        groundBody.collisionBitMask = playerCategory
+        groundBody.contactTestBitMask = 0
+
+        let groundPhysics = SKNode()
+        groundPhysics.physicsBody = groundBody
+        addChild(groundPhysics)
     }
 
-    private func createPlayer() {
+    private func setupPlayer() {
+        playerX = size.width * 0.20
+
         player = SKShapeNode(
-            rectOf: CGSize(width: 38, height: 46),
-            cornerRadius: 5
+            rectOf: CGSize(width: 38, height: 43),
+            cornerRadius: 8
         )
 
-        player.fillColor = SKColor(
-            red: 1, green: 0.32, blue: 0.28, alpha: 1
-        )
+        player.fillColor = SKColor(red: 0.15, green: 0.95, blue: 0.55, alpha: 1)
         player.strokeColor = .white
-        player.lineWidth = 2
+        player.lineWidth = 1.5
+        player.glowWidth = 5
         player.position = CGPoint(
-            x: size.width * 0.18,
-            y: floorY + 36
+            x: playerX,
+            y: groundY + 22
         )
-        player.zPosition = 10
-
-        player.physicsBody = SKPhysicsBody(
-            rectangleOf: CGSize(width: 34, height: 42)
-        )
-        player.physicsBody?.allowsRotation = false
-        player.physicsBody?.restitution = 0
-        player.physicsBody?.friction = 0
-        player.physicsBody?.categoryBitMask = playerCategory
-        player.physicsBody?.collisionBitMask = groundCategory
-        player.physicsBody?.contactTestBitMask =
-            obstacleCategory | coinCategory
-
-        addChild(player)
+        player.zPosition = 5
 
         let eye = SKShapeNode(circleOfRadius: 3)
-        eye.fillColor = .white
+        eye.fillColor = .black
         eye.strokeColor = .clear
-        eye.position = CGPoint(x: 8, y: 7)
+        eye.position = CGPoint(x: 9, y: 6)
         player.addChild(eye)
+
+        let body = SKPhysicsBody(rectangleOf: CGSize(width: 34, height: 40))
+        body.mass = 0.8
+        body.allowsRotation = false
+        body.restitution = 0
+        body.friction = 0
+        body.categoryBitMask = playerCategory
+        body.collisionBitMask = groundCategory | obstacleCategory
+        body.contactTestBitMask = obstacleCategory | coinCategory
+
+        player.physicsBody = body
+        addChild(player)
     }
 
-    private func createHUD() {
-        scoreLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        scoreLabel.fontSize = 21
+    private func setupHUD() {
+        scoreLabel.fontSize = 25
         scoreLabel.fontColor = .white
-        scoreLabel.horizontalAlignmentMode = .left
+        scoreLabel.horizontalAlignmentMode = .right
         scoreLabel.position = CGPoint(
-            x: 28,
-            y: size.height - 45
+            x: size.width - 30,
+            y: size.height - 48
         )
-        scoreLabel.zPosition = 30
+        scoreLabel.zPosition = 20
         addChild(scoreLabel)
 
-        bestLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        bestLabel.fontSize = 15
-        bestLabel.fontColor = .yellow
-        bestLabel.horizontalAlignmentMode = .right
-        bestLabel.position = CGPoint(
-            x: size.width - 28,
-            y: size.height - 43
-        )
-        bestLabel.zPosition = 30
+        bestLabel.fontSize = 14
+        bestLabel.fontColor = SKColor(white: 0.75, alpha: 1)
+        bestLabel.horizontalAlignmentMode = .left
+        bestLabel.position = CGPoint(x: 30, y: size.height - 43)
+        bestLabel.zPosition = 20
         addChild(bestLabel)
+
+        updateHUD()
     }
 
-    private func updateLabels() {
-        scoreLabel.text = "SCORE: \(score)"
-        bestLabel.text = "BEST: \(bestScore)"
-    }
+    private func setupOverlay() {
+        titleLabel.fontSize = 43
+        titleLabel.fontColor = .white
+        titleLabel.verticalAlignmentMode = .center
+        titleLabel.horizontalAlignmentMode = .center
+        titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.66)
+        titleLabel.zPosition = 30
+        addChild(titleLabel)
 
-    private func showMessage(
-        _ title: String,
-        subtitle: String
-    ) {
-        messageLabel.removeFromParent()
-
-        messageLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        messageLabel.text = title
-        messageLabel.fontSize = 30
-        messageLabel.fontColor = .white
-        messageLabel.position = CGPoint(
-            x: size.width / 2,
-            y: size.height * 0.62
-        )
-        messageLabel.zPosition = 50
+        messageLabel.fontSize = 18
+        messageLabel.fontColor = SKColor(white: 0.8, alpha: 1)
+        messageLabel.horizontalAlignmentMode = .center
+        messageLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.53)
+        messageLabel.zPosition = 30
         addChild(messageLabel)
 
-        let sub = SKLabelNode(fontNamed: "Menlo-Bold")
-        sub.text = subtitle
-        sub.fontSize = 15
-        sub.fontColor = .yellow
-        sub.position = CGPoint(x: 0, y: -35)
-        messageLabel.addChild(sub)
+        actionLabel.fontSize = 19
+        actionLabel.fontColor = SKColor(red: 0.2, green: 1, blue: 0.6, alpha: 1)
+        actionLabel.horizontalAlignmentMode = .center
+        actionLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.39)
+        actionLabel.zPosition = 30
+        addChild(actionLabel)
+
+        actionLabel.run(
+            SKAction.repeatForever(
+                SKAction.sequence([
+                    .fadeAlpha(to: 0.35, duration: 0.7),
+                    .fadeAlpha(to: 1, duration: 0.7)
+                ])
+            )
+        )
+    }
+
+    private func showReadyScreen() {
+        titleLabel.text = "PIXEL RUNNER"
+        messageLabel.text = "Jump over obstacles • Collect coins"
+        actionLabel.text = "TAP TO START"
+        showOverlay(true)
+    }
+
+    private func showOverlay(_ visible: Bool) {
+        let alpha: CGFloat = visible ? 1 : 0
+        titleLabel.alpha = alpha
+        messageLabel.alpha = alpha
+        actionLabel.alpha = alpha
     }
 
     private func startGame() {
-        state = .playing
-        messageLabel.removeFromParent()
-
+        gameState = .playing
         score = 0
-        scoreTimer = 0
-        spawnTimer = 0.7
-        gameSpeed = 300
+        elapsedTime = 0
 
-        updateLabels()
-    }
+        player.position = CGPoint(x: playerX, y: groundY + 22)
+        player.physicsBody?.velocity = .zero
+        player.physicsBody?.isDynamic = true
 
-    private func jump() {
-        guard state == .playing,
-              let body = player.physicsBody else {
-            return
-        }
+        updateHUD()
+        showOverlay(false)
 
-        if abs(body.velocity.dy) < 1 {
-            body.applyImpulse(
-                CGVector(dx: 0, dy: 650)
-            )
-        }
+        run(
+            SKAction.repeatForever(
+                SKAction.sequence([
+                    .wait(forDuration: 1.35),
+                    .run { [weak self] in self?.spawnObstacle() }
+                ])
+            ),
+            withKey: "obstacleSpawner"
+        )
+
+        run(
+            SKAction.repeatForever(
+                SKAction.sequence([
+                    .wait(forDuration: 1.8),
+                    .run { [weak self] in self?.spawnCoin() }
+                ])
+            ),
+            withKey: "coinSpawner"
+        )
     }
 
     private func spawnObstacle() {
-        let height = CGFloat.random(in: 38...75)
-        let width = CGFloat.random(in: 25...42)
+        guard gameState == .playing else { return }
+
+        let height = CGFloat.random(in: 35...65)
+        let width = CGFloat.random(in: 24...34)
 
         let obstacle = SKShapeNode(
             rectOf: CGSize(width: width, height: height),
-            cornerRadius: 4
+            cornerRadius: 5
         )
 
-        obstacle.name = "obstacle"
-        obstacle.fillColor = SKColor(
-            red: 0.45, green: 0.30, blue: 0.85, alpha: 1
-        )
-        obstacle.strokeColor = .white
+        obstacle.fillColor = SKColor(red: 1, green: 0.25, blue: 0.32, alpha: 1)
+        obstacle.strokeColor = SKColor(red: 1, green: 0.65, blue: 0.55, alpha: 1)
         obstacle.lineWidth = 2
-        obstacle.position = CGPoint(
-            x: size.width + width,
-            y: floorY + 12 + height / 2
-        )
-        obstacle.zPosition = 8
+        obstacle.glowWidth = 3
 
-        obstacle.physicsBody = SKPhysicsBody(
-            rectangleOf: CGSize(width: width, height: height)
+        obstacle.position = CGPoint(
+            x: size.width + 50,
+            y: groundY + height / 2
         )
-        obstacle.physicsBody?.isDynamic = false
-        obstacle.physicsBody?.categoryBitMask = obstacleCategory
-        obstacle.physicsBody?.contactTestBitMask = 0
-        obstacle.physicsBody?.collisionBitMask = 0
+        obstacle.zPosition = 4
+
+        let body = SKPhysicsBody(rectangleOf: CGSize(width: width - 3, height: height - 3))
+        body.isDynamic = false
+        body.categoryBitMask = obstacleCategory
+        body.contactTestBitMask = playerCategory
+        body.collisionBitMask = playerCategory
+        obstacle.physicsBody = body
 
         addChild(obstacle)
 
-        let distance = size.width + width * 2
-        let duration = TimeInterval(distance / gameSpeed)
+        let duration = max(0.85, 2.0 - Double(score) * 0.006)
 
         obstacle.run(
             SKAction.sequence([
-                SKAction.moveBy(
-                    x: -distance,
-                    y: 0,
-                    duration: duration
-                ),
-                SKAction.removeFromParent()
+                .moveTo(x: -60, duration: duration),
+                .removeFromParent()
             ])
         )
     }
 
     private func spawnCoin() {
-        let coin = SKShapeNode(circleOfRadius: 12)
+        guard gameState == .playing else { return }
 
-        coin.name = "coin"
-        coin.fillColor = .yellow
-        coin.strokeColor = .orange
-        coin.lineWidth = 3
+        let coin = SKShapeNode(circleOfRadius: 12)
+        coin.fillColor = SKColor(red: 1, green: 0.78, blue: 0.12, alpha: 1)
+        coin.strokeColor = SKColor(red: 1, green: 0.95, blue: 0.55, alpha: 1)
+        coin.lineWidth = 2
+        coin.glowWidth = 7
 
         coin.position = CGPoint(
-            x: size.width + 20,
-            y: floorY + CGFloat.random(in: 85...150)
+            x: size.width + 30,
+            y: groundY + CGFloat.random(in: 65...125)
         )
-        coin.zPosition = 9
+        coin.zPosition = 4
 
-        coin.physicsBody = SKPhysicsBody(circleOfRadius: 12)
-        coin.physicsBody?.isDynamic = false
-        coin.physicsBody?.categoryBitMask = coinCategory
-        coin.physicsBody?.contactTestBitMask = 0
-        coin.physicsBody?.collisionBitMask = 0
+        let body = SKPhysicsBody(circleOfRadius: 10)
+        body.isDynamic = false
+        body.categoryBitMask = coinCategory
+        body.contactTestBitMask = playerCategory
+        body.collisionBitMask = 0
+        coin.physicsBody = body
 
         addChild(coin)
 
-        let distance = size.width + 50
-        let duration = TimeInterval(distance / gameSpeed)
+        let spin = SKAction.rotate(byAngle: .pi * 2, duration: 1)
+        coin.run(.repeatForever(spin))
 
         coin.run(
             SKAction.sequence([
-                SKAction.moveBy(
-                    x: -distance,
-                    y: 0,
-                    duration: duration
-                ),
-                SKAction.removeFromParent()
+                .moveTo(x: -40, duration: 2.4),
+                .removeFromParent()
             ])
         )
+    }
+
+    private func jump() {
+        guard gameState == .playing else { return }
+        guard let body = player.physicsBody else { return }
+
+        if player.position.y <= groundY + 25,
+           body.velocity.dy <= 5 {
+            body.velocity = CGVector(dx: 0, dy: 0)
+            body.applyImpulse(CGVector(dx: 0, dy: 520))
+
+            player.run(
+                SKAction.sequence([
+                    .scaleX(to: 1.15, duration: 0.08),
+                    .scaleX(to: 1, duration: 0.12)
+                ])
+            )
+        }
     }
 
     func didBegin(_ contact: SKPhysicsContact) {
         let first = contact.bodyA.categoryBitMask
         let second = contact.bodyB.categoryBitMask
 
-        let categories = first | second
+        let isCoin =
+            (first == playerCategory && second == coinCategory) ||
+            (second == playerCategory && first == coinCategory)
 
-        if categories == (playerCategory | obstacleCategory) {
-            endGame()
-        }
+        let isObstacle =
+            (first == playerCategory && second == obstacleCategory) ||
+            (second == playerCategory && first == obstacleCategory)
 
-        if categories == (playerCategory | coinCategory) {
-            let coinBody = first == coinCategory
-                ? contact.bodyA
-                : contact.bodyB
-
+        if isCoin {
+            let coinBody = first == coinCategory ? contact.bodyA : contact.bodyB
             coinBody.node?.removeFromParent()
 
-            score += 5
-            updateLabels()
+            score += 10
+            updateHUD()
+
+            let effect = SKLabelNode(fontNamed: "AvenirNext-Heavy")
+            effect.text = "+10"
+            effect.fontSize = 18
+            effect.fontColor = .yellow
+            effect.position = player.position
+            effect.zPosition = 25
+            addChild(effect)
+
+            effect.run(
+                .sequence([
+                    .group([
+                        .moveBy(x: 0, y: 40, duration: 0.5),
+                        .fadeOut(withDuration: 0.5)
+                    ]),
+                    .removeFromParent()
+                ])
+            )
+        }
+
+        if isObstacle {
+            endGame()
         }
     }
 
     private func endGame() {
-        guard state == .playing else { return }
+        guard gameState == .playing else { return }
 
-        state = .gameOver
+        gameState = .gameOver
+
+        removeAction(forKey: "obstacleSpawner")
+        removeAction(forKey: "coinSpawner")
+
         player.physicsBody?.velocity = .zero
 
         if score > bestScore {
             bestScore = score
-            UserDefaults.standard.set(
-                bestScore,
-                forKey: "pixelRunnerBest"
-            )
+            UserDefaults.standard.set(bestScore, forKey: "pixelRunnerBest")
         }
 
-        updateLabels()
-        showMessage("GAME OVER", subtitle: "TAP TO RESTART")
-    }
+        updateHUD()
 
-    override func update(_ currentTime: TimeInterval) {
-        if lastUpdate == 0 {
-            lastUpdate = currentTime
-        }
+        titleLabel.text = "GAME OVER"
+        messageLabel.text = "Your score: \(score)"
+        actionLabel.text = "TAP TO PLAY AGAIN"
 
-        let delta = min(currentTime - lastUpdate, 0.05)
-        lastUpdate = currentTime
+        showOverlay(true)
 
-        guard state == .playing else { return }
-
-        scoreTimer += delta
-        spawnTimer += delta
-
-        if scoreTimer >= 0.15 {
-            score += 1
-            scoreTimer = 0
-            updateLabels()
-        }
-
-        if spawnTimer >= max(
-            0.65,
-            1.45 - Double(score) * 0.003
-        ) {
-            spawnObstacle()
-
-            if Int.random(in: 0...2) == 0 {
-                spawnCoin()
-            }
-
-            spawnTimer = 0
-        }
-
-        gameSpeed = min(
-            600,
-            300 + CGFloat(score) * 1.2
+        player.run(
+            .sequence([
+                .rotate(byAngle: -.15, duration: 0.1),
+                .rotate(byAngle: .15, duration: 0.1)
+            ])
         )
     }
 
-    override func touchesBegan(
-        _ touches: Set<UITouch>,
-        with event: UIEvent?
-    ) {
-        switch state {
+    private func updateHUD() {
+        scoreLabel.text = "SCORE  \(score)"
+        bestLabel.text = "BEST  \(bestScore)"
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+
+        switch gameState {
         case .ready:
             startGame()
-
         case .playing:
             jump()
-
         case .gameOver:
-            setupWorld()
-            startGame()
+            restartGame()
         }
     }
 
-    override func didChangeSize(_ oldSize: CGSize) {
-        guard oldSize != .zero else { return }
+    private func restartGame() {
+        removeAllActions()
 
-        if state != .playing {
-            setupWorld()
+        enumerateChildNodes(withName: "//obstacle") { node, _ in
+            node.removeFromParent()
+        }
+
+        for node in children where
+            node.physicsBody?.categoryBitMask == obstacleCategory ||
+            node.physicsBody?.categoryBitMask == coinCategory {
+            node.removeFromParent()
+        }
+
+        player.removeAllActions()
+        player.zRotation = 0
+        player.xScale = 1
+        player.yScale = 1
+
+        player.physicsBody?.velocity = .zero
+        player.physicsBody?.angularVelocity = 0
+        player.position = CGPoint(x: playerX, y: groundY + 22)
+
+        gameState = .ready
+        startGame()
+    }
+
+    override func update(_ currentTime: TimeInterval) {
+        if lastUpdateTime == 0 {
+            lastUpdateTime = currentTime
+        }
+
+        let delta = min(currentTime - lastUpdateTime, 0.05)
+        lastUpdateTime = currentTime
+
+        guard gameState == .playing else { return }
+
+        elapsedTime += delta
+
+        if elapsedTime >= 0.1 {
+            score += 1
+            elapsedTime = 0
+            updateHUD()
+        }
+
+        if player.position.y < -100 {
+            endGame()
         }
     }
 }
