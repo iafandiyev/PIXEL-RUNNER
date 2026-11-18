@@ -1,9 +1,12 @@
+
 import SpriteKit
 
 final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private enum GameState {
-        case ready, playing, gameOver
+        case ready
+        case playing
+        case gameOver
     }
 
     private let playerCategory: UInt32 = 1
@@ -25,7 +28,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var lastUpdate: TimeInterval = 0
     private var gameSpeed: CGFloat = 300
 
-    private var floorY: CGFloat { size.height * 0.19 }
+    private var floorY: CGFloat {
+        size.height * 0.19
+    }
 
     override func didMove(to view: SKView) {
         physicsWorld.gravity = CGVector(dx: 0, dy: -22)
@@ -37,7 +42,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         removeAllChildren()
         removeAllActions()
 
-        backgroundColor = SKColor(red: 0.055, green: 0.075, blue: 0.14, alpha: 1)
+        backgroundColor = SKColor(
+            red: 0.055,
+            green: 0.075,
+            blue: 0.14,
+            alpha: 1
+        )
 
         state = .ready
         score = 0
@@ -56,22 +66,34 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func createBackground() {
         for _ in 0..<45 {
-            let star = SKShapeNode(circleOfRadius: CGFloat.random(in: 1...2))
+            let star = SKShapeNode(
+                circleOfRadius: CGFloat.random(in: 1...2)
+            )
+
             star.fillColor = .white
             star.strokeColor = .clear
             star.alpha = CGFloat.random(in: 0.2...0.8)
+
             star.position = CGPoint(
                 x: CGFloat.random(in: 0...size.width),
-                y: CGFloat.random(in: floorY + 100...max(floorY + 101, size.height))
+                y: CGFloat.random(
+                    in: floorY + 100...max(floorY + 101, size.height)
+                )
             )
+
             star.zPosition = 0
             addChild(star)
         }
 
         let moon = SKShapeNode(circleOfRadius: 27)
-        moon.fillColor = SKColor(red: 1, green: 0.82, blue: 0.43, alpha: 1)
+        moon.fillColor = SKColor(
+            red: 1, green: 0.82, blue: 0.43, alpha: 1
+        )
         moon.strokeColor = .clear
-        moon.position = CGPoint(x: size.width * 0.82, y: size.height * 0.76)
+        moon.position = CGPoint(
+            x: size.width * 0.82,
+            y: size.height * 0.76
+        )
         moon.zPosition = 1
         addChild(moon)
 
@@ -86,7 +108,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             path.closeSubpath()
 
             mountain.path = path
-            mountain.fillColor = SKColor(red: 0.12, green: 0.17, blue: 0.28, alpha: 1)
+            mountain.fillColor = SKColor(
+                red: 0.12, green: 0.17, blue: 0.28, alpha: 1
+            )
             mountain.strokeColor = .clear
             mountain.zPosition = 1
             addChild(mountain)
@@ -98,9 +122,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             rectOf: CGSize(width: size.width * 2, height: 24)
         )
 
-        ground.fillColor = SKColor(red: 0.15, green: 0.72, blue: 0.48, alpha: 1)
+        ground.fillColor = SKColor(
+            red: 0.15, green: 0.72, blue: 0.48, alpha: 1
+        )
         ground.strokeColor = .clear
-        ground.position = CGPoint(x: size.width / 2, y: floorY)
+        ground.position = CGPoint(
+            x: size.width / 2,
+            y: floorY
+        )
         ground.zPosition = 4
 
         ground.physicsBody = SKPhysicsBody(
@@ -115,9 +144,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let line = SKShapeNode(
             rectOf: CGSize(width: size.width * 2, height: 4)
         )
-        line.fillColor = SKColor(red: 0.35, green: 1, blue: 0.65, alpha: 1)
+
+        line.fillColor = SKColor(
+            red: 0.35, green: 1, blue: 0.65, alpha: 1
+        )
         line.strokeColor = .clear
-        line.position = CGPoint(x: size.width / 2, y: floorY + 14)
+        line.position = CGPoint(
+            x: size.width / 2,
+            y: floorY + 14
+        )
         line.zPosition = 5
         addChild(line)
     }
@@ -128,10 +163,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             cornerRadius: 5
         )
 
-        player.fillColor = SKColor(red: 1, green: 0.32, blue: 0.28, alpha: 1)
+        player.fillColor = SKColor(
+            red: 1, green: 0.32, blue: 0.28, alpha: 1
+        )
         player.strokeColor = .white
         player.lineWidth = 2
-        player.position = CGPoint(x: size.width * 0.18, y: floorY + 36)
+        player.position = CGPoint(
+            x: size.width * 0.18,
+            y: floorY + 36
+        )
         player.zPosition = 10
 
         player.physicsBody = SKPhysicsBody(
@@ -142,7 +182,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         player.physicsBody?.friction = 0
         player.physicsBody?.categoryBitMask = playerCategory
         player.physicsBody?.collisionBitMask = groundCategory
-        player.physicsBody?.contactTestBitMask = obstacleCategory | coinCategory
+        player.physicsBody?.contactTestBitMask =
+            obstacleCategory | coinCategory
 
         addChild(player)
 
@@ -158,7 +199,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.fontSize = 21
         scoreLabel.fontColor = .white
         scoreLabel.horizontalAlignmentMode = .left
-        scoreLabel.position = CGPoint(x: 28, y: size.height - 45)
+        scoreLabel.position = CGPoint(
+            x: 28,
+            y: size.height - 45
+        )
         scoreLabel.zPosition = 30
         addChild(scoreLabel)
 
@@ -166,7 +210,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         bestLabel.fontSize = 15
         bestLabel.fontColor = .yellow
         bestLabel.horizontalAlignmentMode = .right
-        bestLabel.position = CGPoint(x: size.width - 28, y: size.height - 43)
+        bestLabel.position = CGPoint(
+            x: size.width - 28,
+            y: size.height - 43
+        )
         bestLabel.zPosition = 30
         addChild(bestLabel)
     }
@@ -176,14 +223,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         bestLabel.text = "BEST: \(bestScore)"
     }
 
-    private func showMessage(_ title: String, subtitle: String) {
+    private func showMessage(
+        _ title: String,
+        subtitle: String
+    ) {
         messageLabel.removeFromParent()
 
         messageLabel = SKLabelNode(fontNamed: "Menlo-Bold")
         messageLabel.text = title
         messageLabel.fontSize = 30
         messageLabel.fontColor = .white
-        messageLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.62)
+        messageLabel.position = CGPoint(
+            x: size.width / 2,
+            y: size.height * 0.62
+        )
         messageLabel.zPosition = 50
         addChild(messageLabel)
 
@@ -208,10 +261,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func jump() {
-        guard state == .playing, let body = player.physicsBody else { return }
+        guard state == .playing,
+              let body = player.physicsBody else {
+            return
+        }
 
         if abs(body.velocity.dy) < 1 {
-            body.applyImpulse(CGVector(dx: 0, dy: 650))
+            body.applyImpulse(
+                CGVector(dx: 0, dy: 650)
+            )
         }
     }
 
@@ -225,7 +283,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         )
 
         obstacle.name = "obstacle"
-        obstacle.fillColor = SKColor(red: 0.45, green: 0.30, blue: 0.85, alpha: 1)
+        obstacle.fillColor = SKColor(
+            red: 0.45, green: 0.30, blue: 0.85, alpha: 1
+        )
         obstacle.strokeColor = .white
         obstacle.lineWidth = 2
         obstacle.position = CGPoint(
@@ -249,7 +309,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         obstacle.run(
             SKAction.sequence([
-                SKAction.moveBy(x: -distance, y: 0, duration: duration),
+                SKAction.moveBy(
+                    x: -distance,
+                    y: 0,
+                    duration: duration
+                ),
                 SKAction.removeFromParent()
             ])
         )
@@ -257,10 +321,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func spawnCoin() {
         let coin = SKShapeNode(circleOfRadius: 12)
+
         coin.name = "coin"
         coin.fillColor = .yellow
         coin.strokeColor = .orange
         coin.lineWidth = 3
+
         coin.position = CGPoint(
             x: size.width + 20,
             y: floorY + CGFloat.random(in: 85...150)
@@ -280,7 +346,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         coin.run(
             SKAction.sequence([
-                SKAction.moveBy(x: -distance, y: 0, duration: duration),
+                SKAction.moveBy(
+                    x: -distance,
+                    y: 0,
+                    duration: duration
+                ),
                 SKAction.removeFromParent()
             ])
         )
@@ -297,7 +367,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         if categories == (playerCategory | coinCategory) {
-            let coinBody = first == coinCategory ? contact.bodyA : contact.bodyB
+            let coinBody = first == coinCategory
+                ? contact.bodyA
+                : contact.bodyB
+
             coinBody.node?.removeFromParent()
 
             score += 5
@@ -313,7 +386,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         if score > bestScore {
             bestScore = score
-            UserDefaults.standard.set(bestScore, forKey: "pixelRunnerBest")
+            UserDefaults.standard.set(
+                bestScore,
+                forKey: "pixelRunnerBest"
+            )
         }
 
         updateLabels()
@@ -339,7 +415,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             updateLabels()
         }
 
-        if spawnTimer >= max(0.65, 1.45 - Double(score) * 0.003) {
+        if spawnTimer >= max(
+            0.65,
+            1.45 - Double(score) * 0.003
+        ) {
             spawnObstacle()
 
             if Int.random(in: 0...2) == 0 {
@@ -349,17 +428,23 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             spawnTimer = 0
         }
 
-        gameSpeed = min(600, 300 + CGFloat(score) * 1.2)
+        gameSpeed = min(
+            600,
+            300 + CGFloat(score) * 1.2
+        )
     }
 
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-
+    override func touchesBegan(
+        _ touches: Set<UITouch>,
+        with event: UIEvent?
+    ) {
         switch state {
         case .ready:
             startGame()
+
         case .playing:
             jump()
+
         case .gameOver:
             setupWorld()
             startGame()
@@ -368,6 +453,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     override func didChangeSize(_ oldSize: CGSize) {
         guard oldSize != .zero else { return }
+
         if state != .playing {
             setupWorld()
         }

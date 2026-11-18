@@ -1,47 +1,21 @@
+
 @echo off
-title PIXEL RUNNER - GitHub Upload
-color 0A
-
+title PIXEL RUNNER Upload
 cd /d "%~dp0"
-
-echo.
-echo ================================
-echo       PIXEL RUNNER UPLOAD
-echo ================================
-echo.
-
-git --version >nul 2>&1
-if errorlevel 1 (
-    echo Git is not installed!
-    pause
-    exit /b 1
-)
-
-if not exist ".git" (
-    git init
-)
-
-git branch -M main
-
-git remote get-url origin >nul 2>&1
-if errorlevel 1 (
-    git remote add origin https://github.com/iafandiyev/PIXEL-RUNNER.git
-) else (
-    git remote set-url origin https://github.com/iafandiyev/PIXEL-RUNNER.git
-)
 
 git add .
 
-git commit -m "Build PIXEL RUNNER iOS game"
+git diff --cached --quiet
+if %errorlevel%==0 (
+    echo No new changes to commit.
+) else (
+    git commit -m "Fix PIXEL RUNNER iOS build"
+)
 
-git push -u origin main
+git push origin main
 
 echo.
-echo ================================
-echo       UPLOAD FINISHED
-echo ================================
-echo.
-echo Open:
+echo Check GitHub Actions:
 echo https://github.com/iafandiyev/PIXEL-RUNNER/actions
 echo.
 pause

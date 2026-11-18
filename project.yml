@@ -5,32 +5,28 @@ options:
   bundleIdPrefix: com.iafandiyev
   deploymentTarget:
     iOS: "16.0"
-  createIntermediateGroups: true
 
 targets:
   PixelRunner:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
 
     sources:
-      - path: PixelRunner
-        excludes:
-          - "**/.DS_Store"
+      - PixelRunner
 
     settings:
       base:
-        PRODUCT_NAME: PixelRunner
         PRODUCT_BUNDLE_IDENTIFIER: com.iafandiyev.pixelrunner
+        PRODUCT_NAME: PixelRunner
         SWIFT_VERSION: "5.0"
-        TARGETED_DEVICE_FAMILY: "1"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "PIXEL RUNNER"
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         CODE_SIGNING_ALLOWED: NO
 
     info:
+      path: PixelRunner/Info.plist
       properties:
         CFBundleDisplayName: "PIXEL RUNNER"
         UISupportedInterfaceOrientations:
