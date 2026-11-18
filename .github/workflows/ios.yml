@@ -1,0 +1,45 @@
+name: Build PIXEL RUNNER IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build iOS application
+        run: |
+          xcodebuild \
+            -project PixelRunner.xcodeproj \
+            -scheme PixelRunner \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/PixelRunner.app Payload/
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload PixelRunner.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: PIXEL-RUNNER-IPA
+          path: PixelRunner.ipa
+          if-no-files-found: error
