@@ -1,24 +1,46 @@
-name: Build PIXEL RUNNER IPA
+
+name: PIXEL RUNNER iOS IPA
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build iOS IPA
     runs-on: macos-15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          brew update
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Validate project files
+        run: |
+          test -f PixelRunner/PixelRunnerApp.swift
+          test -f PixelRunner/GameScene.swift
+          test -f project.yml
 
       - name: Generate Xcode project
-        run: xcodegen generate
+        run: |
+          xcodegen generate --spec project.yml
+          test -d PixelRunner.xcodeproj
+          xcodebuild -list -project PixelRunner.xcodeproj
 
       - name: Build iOS application
         run: |
@@ -27,19 +49,27 @@ jobs:
             -scheme PixelRunner \
             -configuration Release \
             -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            clean build
 
-      - name: Package unsigned IPA
+      - name: Verify application
+        run: |
+          test -d build/Build/Products/Release-iphoneos/PixelRunner.app
+          ls -la build/Build/Products/Release-iphoneos/
+
+      - name: Create unsigned IPA
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/PixelRunner.app Payload/
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload PixelRunner.ipa
+          test -f PixelRunner.ipa
 
-      - name: Upload IPA
+      - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: PIXEL-RUNNER-IPA
           path: PixelRunner.ipa
           if-no-files-found: error
+          retention-days: 7

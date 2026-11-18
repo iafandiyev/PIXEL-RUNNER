@@ -1,23 +1,28 @@
+
 name: PixelRunner
 
 options:
   bundleIdPrefix: com.iafandiyev
   deploymentTarget:
     iOS: "16.0"
+  createIntermediateGroups: true
 
 targets:
   PixelRunner:
     type: application
     platform: iOS
+    deploymentTarget: "16.0"
 
     sources:
-      - PixelRunner
+      - path: PixelRunner
+        excludes:
+          - "**/.DS_Store"
 
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.iafandiyev.pixelrunner
         PRODUCT_NAME: PixelRunner
-        SWIFT_VERSION: 5.0
+        PRODUCT_BUNDLE_IDENTIFIER: com.iafandiyev.pixelrunner
+        SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         GENERATE_INFOPLIST_FILE: YES
@@ -27,6 +32,7 @@ targets:
 
     info:
       properties:
+        CFBundleDisplayName: "PIXEL RUNNER"
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
